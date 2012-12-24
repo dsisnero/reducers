@@ -1,0 +1,9 @@
+.autotest
+History.txt
+Manifest.txt
+README.txt
+Rakefile
+bin/reducers
+lib/reducers.rb
+spec/spec_helper.rb
+spec/reducers_spec.rb
