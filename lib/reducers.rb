@@ -24,14 +24,14 @@ module Reducers
   module Transformers
 
     def map(p = nil, &block)
-      proc = p || block
-      add_proc mapping(proc)
+  #    proc = p || block
+      add_proc mapping(&block)
       self
     end
 
     def filter(p = nil, &block)
-      proc = p || block
-      add_proc filtering(proc)
+     # proc = p || block
+      add_proc filtering(&block)
       self
     end
 
@@ -67,23 +67,11 @@ module Reducers
     protected
 
     def add_proc(proc)
-      @chain = chain.compose(proc)
+    #  @chain = chain.compose(proc)
+      @proc_chain << proc
     end
 
-   # def mapping_creater(fname)
-    # Module.class_eval do
-
-    #   name = generate_name
-    #   define_method (:name) do |result,input|
-    #     f1(result,yield input)
-    #   end
-
-    #   def "genname"(result,input)
-    #     "#{f1}(result, "#{genname}"(input))
-    #   end
-
-
-    def mapping(f)
+    def mapping(&f)
       ->(f1){
         ->(result,input){
           f1[result, f[input]]
@@ -156,7 +144,7 @@ module Reducers
       }
     end
 
-    def filtering(pred)
+    def filtering(&pred)
       ->(f1){
         ->(result,input){
           if pred[input]
@@ -185,11 +173,13 @@ class Undefined; end
     include Transformers
 
 
-    attr_reader :chain, :coll
+   # attr_reader :chain
+    attr_reader :coll, :proc_chain
 
     def initialize(coll)
       @coll = coll
       @chain = ->x{x}
+      @proc_chain = []
     end
 
     def reduce(init = nil, f= Undefined ,&block)
@@ -209,6 +199,10 @@ class Undefined; end
       else
         coll.reduce(&reducer)
       end
+    end
+
+    def chain
+      chain ||= Proc.compose(proc_chain)
     end
 
 
