@@ -23,14 +23,12 @@ module Reducers
 
   module Transformers
 
-    def map(p = nil, &block)
-  #    proc = p || block
+    def map(&block)
       add_proc mapping(&block)
       self
     end
 
     def filter(p = nil, &block)
-     # proc = p || block
       add_proc filtering(&block)
       self
     end
@@ -46,13 +44,12 @@ module Reducers
     end
 
     def take_while(&block)
-      proc = p || block
-      add_proc take_while_proc(proc)
+      add_proc take_while_proc(&block)
+      self
     end
 
     def drop_while(&block)
-      proc = p || block
-      add_proc drop_while_proc(proc)
+      add_proc drop_while_proc(&block)
       self
     end
 
@@ -63,7 +60,7 @@ module Reducers
     protected
 
     def add_proc(proc)
-    #  @chain = chain.compose(proc)
+      #  @chain = chain.compose(proc)
       @proc_chain << proc
     end
 
@@ -71,6 +68,7 @@ module Reducers
       ->(f1){
         ->(result,input){
           f1[result, f[input]]
+
         }
 
       }
@@ -80,50 +78,32 @@ module Reducers
       ->(f1){
         ->(result, input){
           n = n - 1
-          if n > 0
+          if n >= 0
             f1[result, input]
           else
-           throw(:reduced, result)
+            throw(:reduced, result)
           end
         }
       }
     end
 
-    def nonfiltered_proc
-      ->(f1){
-        ->(result,input){
-          f1[result,input]
-        }}
-    end
-
-    def filtered_proc
-      ->(f1){
-        ->(result,input){
-          result
-        }}
-    end
-
-    def take_while_proc(pred)
+    def take_while_proc(&pred)
       ->(f1){
         taking = true
         ->(result,input){
-          if taking
-            taking = pred[input]
-          end
-
+          taking = pred[input]
           if taking
             f1[result,input]
           else
-            #break
-            return result
+            throw(:reduced,result)
           end
-        }}
+        }
+      }
     end
 
 
-
-    def drop_while_proc(pred)
-     # dropping = true
+    def drop_while_proc(&pred)
+      # dropping = true
       ->(f1){
         dropping = true
         ->(result, input){
@@ -162,14 +142,14 @@ module Reducers
   end
 
 
-class Undefined; end
+  class Undefined; end
 
   class Reducible
 
     include Transformers
 
 
-   # attr_reader :chain
+    # attr_reader :chain
     attr_reader :coll, :proc_chain
 
     def initialize(coll)
@@ -192,11 +172,11 @@ class Undefined; end
 
       result = catch(:reduced){
 
-      if init
-        coll.reduce(init,&reducer)
-      else
-        coll.reduce(&reducer)
-      end
+        if init
+          coll.reduce(init,&reducer)
+        else
+          coll.reduce(&reducer)
+        end
       }
 
     end
@@ -228,20 +208,20 @@ class Undefined; end
 
 
   end
-  end
+end
 
 
-  # (defn reducer
-  #   ([coll xf]
-  #    (reify
-  #     clojure.core.protocols/CollReduce
-  #     (coll-reduce [_ f1 init]
-  #       (clojure.core.protocols/coll-reduce coll (xf f1) init)))))
+# (defn reducer
+#   ([coll xf]
+#    (reify
+#     clojure.core.protocols/CollReduce
+#     (coll-reduce [_ f1 init]
+#       (clojure.core.protocols/coll-reduce coll (xf f1) init)))))
 
-  # def reducer(coll,xf)
-  #   Class.new do
-  #     define_method :reduce do |init,coll,f1|
-  #       coll.reduce(init,xf.(f1))
-  #     end
-  #   end
-  # end
+# def reducer(coll,xf)
+#   Class.new do
+#     define_method :reduce do |init,coll,f1|
+#       coll.reduce(init,xf.(f1))
+#     end
+#   end
+# end
