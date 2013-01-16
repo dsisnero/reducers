@@ -41,12 +41,8 @@ module Reducers
     end
 
     def take(n)
-      reduce([]) do |result, input|
-        return result if n <= 0
-        result << input
-        n = n - 1
-        result
-      end
+      add_proc taking(n)
+      self
     end
 
     def take_while(&block)
@@ -87,7 +83,7 @@ module Reducers
           if n > 0
             f1[result, input]
           else
-            return
+           throw(:reduced, result)
           end
         }
       }
@@ -194,11 +190,15 @@ class Undefined; end
         reducer = chain.(block) if f == Undefined
       end
 
+      result = catch(:reduced){
+
       if init
         coll.reduce(init,&reducer)
       else
         coll.reduce(&reducer)
       end
+      }
+
     end
 
     def chain
@@ -245,5 +245,3 @@ class Undefined; end
   #     end
   #   end
   # end
-
-
