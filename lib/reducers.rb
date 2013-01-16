@@ -28,7 +28,7 @@ module Reducers
       self
     end
 
-    def filter(p = nil, &block)
+    def filter(&block)
       add_proc filtering(&block)
       self
     end
@@ -64,10 +64,11 @@ module Reducers
       @proc_chain << proc
     end
 
-    def mapping(&f)
+    def mapping()
       ->(f1){
         ->(result,input){
-          f1[result, f[input]]
+          mv = yield input
+          f1[result,mv ]
 
         }
 
@@ -87,11 +88,11 @@ module Reducers
       }
     end
 
-    def take_while_proc(&pred)
+    def take_while_proc()
       ->(f1){
         taking = true
         ->(result,input){
-          taking = pred[input]
+          taking = yield input
           if taking
             f1[result,input]
           else
@@ -102,14 +103,14 @@ module Reducers
     end
 
 
-    def drop_while_proc(&pred)
+    def drop_while_proc()
       # dropping = true
       ->(f1){
         dropping = true
         ->(result, input){
 
           if dropping
-            dropping = pred[input]
+            dropping = yield input
           end
           if dropping
             result
@@ -120,10 +121,10 @@ module Reducers
       }
     end
 
-    def filtering(&pred)
+    def filtering()
       ->(f1){
         ->(result,input){
-          if pred[input]
+          if yield input
             f1[ result,input]
           else
             result
@@ -131,10 +132,11 @@ module Reducers
         }
       }
     end
-    def mapcatting(f)
+    def mapcatting()
       ->(f1){
         ->(result,input){
-          reduce[f1, result, f[input]]
+          mcv = yield input
+          reduce[f1, result, mcv]
         }
       }
     end
