@@ -1,9 +1,11 @@
 .autotest
+.rspec
 History.txt
 Manifest.txt
 README.txt
 Rakefile
 bin/reducers
 lib/reducers.rb
-spec/spec_helper.rb
+lib/reducers/functional.rb
 spec/reducers_spec.rb
+spec/spec_helper.rb

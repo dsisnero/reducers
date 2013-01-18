@@ -74,8 +74,34 @@ end
 #   array.defer.select { |x| x.even? }.collect { |x| x*x }
 # end
 
-#require 'pry'
 benchmark "reducible" , @control do
- # binding.pry
-  array.lazy2.filter{|x| x.even?}.map{|x| x*x}
+  array.lazy2.select{|x| x.even?}.map{|x| x*x}
+end
+puts "\nCOLLECT THEN SELECT BENCHMARKS\n"
+@control = benchmark "conventional (eager)" do
+  array.collect{|x| x*x}.select{|x| x % 25 == 0}.select{ |x| x.even? }
+end
+
+benchmark "enumerating", @control do
+  array.collecting { |x| x*x }.selecting{|x| x % 25 == 0}.selecting { |x| x.even? }
+end
+
+if defined?(Fiber)
+  benchmark "lazing", @control do
+    array.lazing_collect { |x| x*x }.lazing_select{|x| x % 25 == 0}.lazing_select { |x| x.even? }
+  end
+end
+
+if array.respond_to?(:lazy)
+  benchmark "ruby2 Enumerable#lazy", @control do
+    array.lazy.collect { |x| x*x }.select{|x| x % 25 == 0}.select { |x| x.even? }.lazy
+  end
+end
+
+# benchmark "facets Enumerable#defer", @control do
+#   array.defer.select { |x| x.even? }.collect { |x| x*x }
+# end
+
+benchmark "reducible" , @control do
+  array.lazy2.map{|x| x*x}.select{|x| x % 25 == 0}.select{|x| x.even?}
 end

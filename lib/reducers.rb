@@ -1,14 +1,4 @@
 require_relative 'reducers/functional'
-#require 'pry'
-# [1,2,3].into([]) do
-# rmap[inc] >> filter[even?]
-# end
-
-#[1,2,3].xform( rmap[->(x){x+1}], filter[->(x){ x.even?}]).reduce(0){:+}
-
-
-
-# compose = ->(f,g){ ->(*n){ f.(g.(*n))}}
 
 module Enumerable
 
@@ -21,6 +11,8 @@ end
 
 module Reducers
 
+  VERSION = '0.0.5'
+
   module Transformers
 
     def map(&block)
@@ -28,8 +20,52 @@ module Reducers
       self
     end
 
-    def filter(&block)
+    def mash
+            reduce({}) do |result, input|
+
+        r = yield input
+
+        case r
+        when Hash
+          nk, nv = *r.to_a[0]
+        when Range
+          nk, nv = r.first, r.last
+        else
+          nk, nv = *r
+        end
+        result[nk] = nv
+        result
+      end
+    end
+
+    def duplicate_on(&block)
+      group_by(&block).map{|x| x[1]}.select{|x| x.size > 1}
+    end
+
+    def group_by()
+      groups = reduce({}) do |h,i|
+        result = yield i
+        if h[result]
+          h[result] << i
+        else
+          h[result] = [i]
+        end
+        h
+      end
+      groups.lazy2
+    end
+
+    def grep(patt)
+      select{|x| x =~ patt}
+    end
+
+    def select(&block)
       add_proc filtering(&block)
+      self
+    end
+
+    def reject(&block)
+      add_proc filtering(&(block.complement))
       self
     end
 
@@ -43,6 +79,11 @@ module Reducers
       self
     end
 
+    def drop(n)
+      add_proc dropping(n)
+      self
+    end
+
     def take_while(&block)
       add_proc take_while_proc(&block)
       self
@@ -52,6 +93,12 @@ module Reducers
       add_proc drop_while_proc(&block)
       self
     end
+
+    def flat_map(&block)
+      map(&block).flatten
+      self
+    end
+
 
     def to_a
       force
@@ -75,6 +122,27 @@ module Reducers
       }
     end
 
+    def mashing
+      ->(f1){
+
+        ->(result,input){
+          r = yield input
+          h = {}
+          case r
+          when Hash
+            nk, nv = *r.to_a[0]
+          when Range
+            nk, nv = r.first, r.last
+          else
+            nk, nv = *r
+          end
+          h[nk] = nv
+          f1[result,h]
+        }
+      }
+    end
+
+
     def taking(n)
       ->(f1){
         ->(result, input){
@@ -83,6 +151,19 @@ module Reducers
             f1[result, input]
           else
             throw(:reduced, result)
+          end
+        }
+      }
+    end
+
+    def dropping(n)
+      ->(f1){
+        ->(result,input){
+          n = n -1
+          if n < 0
+            f1[result,input]
+          else
+            result
           end
         }
       }
@@ -104,7 +185,6 @@ module Reducers
 
 
     def drop_while_proc()
-      # dropping = true
       ->(f1){
         dropping = true
         ->(result, input){
@@ -132,11 +212,33 @@ module Reducers
         }
       }
     end
+
+    def parting()
+      ->(f1){
+        ->(result,input){
+          if yield input
+            [f1[result,input],result]
+          else
+            [result, f1[result,input]]
+          end
+        }}
+    end
+
+
     def mapcatting()
       ->(f1){
         ->(result,input){
           mcv = yield input
           reduce[f1, result, mcv]
+        }
+      }
+    end
+
+    def flatmapping()
+      ->(f1){
+        ->(result,input){
+          mcv = yield input
+          f1[result, mcv.flatten]
         }
       }
     end
@@ -183,6 +285,21 @@ module Reducers
 
     end
 
+    def initialize_copy(source)
+      super
+      @proc_chain = @proc_chain.dup
+    end
+
+    def tee
+      p2 = self.dup
+      [self, p2]
+    end
+
+    def partition(&block)
+      p1,p2 = tee
+      [p1.select(&block), p2.reject(&block)]
+    end
+
     def chain
       chain ||= Proc.compose(proc_chain)
     end
@@ -191,22 +308,6 @@ module Reducers
     def force
       reduce([]){|r,i| r << i ; r}
     end
-
-    def partition(&block)
-      r2 = self.dup
-      rfilter(&block)
-      [self.rfilter(&block), r2.rfilter( block.complement)]
-    end
-
-
-
-    # def proc_chain
-    #   chain = ->(x){ x }
-    #   chain = ->(a_proc){ chain.compose(a_proc)}
-    # end
-
-
-
 
 
   end
