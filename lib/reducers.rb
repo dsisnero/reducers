@@ -20,8 +20,13 @@ module Reducers
       self
     end
 
+    def mash2(&block)
+      add_proc mashing(&block)
+      self
+    end
+
     def mash
-            reduce({}) do |result, input|
+      reduce({}) do |result, input|
 
         r = yield input
 
@@ -37,6 +42,8 @@ module Reducers
         result
       end
     end
+
+
 
     def duplicate_on(&block)
       group_by(&block).map{|x| x[1]}.select{|x| x.size > 1}
@@ -69,6 +76,14 @@ module Reducers
       self
     end
 
+    def flat_map(&block)
+      add_proc mapcatting(&block)
+      self
+    end
+
+    alias :mapcat :flat_map
+
+
     def mapcat(&block)
       add_proc mapcatting(&block)
       self
@@ -94,12 +109,6 @@ module Reducers
       self
     end
 
-    def flat_map(&block)
-      map(&block).flatten
-      self
-    end
-
-
     def to_a
       force
     end
@@ -121,27 +130,6 @@ module Reducers
 
       }
     end
-
-    def mashing
-      ->(f1){
-
-        ->(result,input){
-          r = yield input
-          h = {}
-          case r
-          when Hash
-            nk, nv = *r.to_a[0]
-          when Range
-            nk, nv = r.first, r.last
-          else
-            nk, nv = *r
-          end
-          h[nk] = nv
-          f1[result,h]
-        }
-      }
-    end
-
 
     def taking(n)
       ->(f1){
@@ -201,6 +189,11 @@ module Reducers
       }
     end
 
+    def sum_r
+      reduce(0){|r,i| r + i}
+    end
+
+
     def filtering()
       ->(f1){
         ->(result,input){
@@ -213,15 +206,9 @@ module Reducers
       }
     end
 
-    def parting()
-      ->(f1){
-        ->(result,input){
-          if yield input
-            [f1[result,input],result]
-          else
-            [result, f1[result,input]]
-          end
-        }}
+
+    def reduce3(init,coll,&f1)
+      coll.reduce(init,&f1)
     end
 
 
@@ -229,19 +216,43 @@ module Reducers
       ->(f1){
         ->(result,input){
           mcv = yield input
-          reduce[f1, result, mcv]
+          reduce3 result, mcv, &f1
         }
       }
     end
 
-    def flatmapping()
+    def mashing
       ->(f1){
+        hresult = {}
+
         ->(result,input){
-          mcv = yield input
-          f1[result, mcv.flatten]
+          r = yield input
+          h = {}
+          case r
+          when Hash
+            nk, nv = *r.to_a[0]
+          when Range
+            nk, nv = r.first, r.last
+          else
+            nk, nv = *r
+          end
+          h[nk] = nv
+          reduce3 result, hresult.merge(h), &f1
         }
       }
     end
+
+    # def parting()
+    #   ->(f1){
+    #     ->(result,input){
+    #       if yield input
+    #         [f1[result,input],result]
+    #       else
+    #         [result, f1[result,input]]
+    #       end
+    #     }}
+    # end
+
 
   end
 
@@ -277,13 +288,18 @@ module Reducers
       result = catch(:reduced){
 
         if init
-          coll.reduce(init,&reducer)
+          reduce3(init,@coll,&reducer)
         else
-          coll.reduce(&reducer)
+          reduce_no_init(@coll,&reducer)
         end
       }
-
     end
+
+
+
+    # def reduce_no_init(&reducer,coll)
+    #   coll.reduce(&reducer)
+    # end
 
     def initialize_copy(source)
       super
@@ -309,22 +325,9 @@ module Reducers
       reduce([]){|r,i| r << i ; r}
     end
 
+    def method_missing(*args,&block)
+      @coll.send(*args,&block)
+    end
 
   end
 end
-
-
-# (defn reducer
-#   ([coll xf]
-#    (reify
-#     clojure.core.protocols/CollReduce
-#     (coll-reduce [_ f1 init]
-#       (clojure.core.protocols/coll-reduce coll (xf f1) init)))))
-
-# def reducer(coll,xf)
-#   Class.new do
-#     define_method :reduce do |init,coll,f1|
-#       coll.reduce(init,xf.(f1))
-#     end
-#   end
-# end
